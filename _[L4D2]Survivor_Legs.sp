@@ -48,7 +48,7 @@ public Plugin:myinfo =
 	author = "Lux",
 	description = "Add's Left 4 Dead 1 Style ViewModel Legs",
 	version = PLUGIN_VERSION,
-	url = ""
+	url = "https://forums.alliedmods.net/showthread.php?t=299560"
 };
 
 public OnPluginStart()
@@ -61,20 +61,6 @@ public OnPluginStart()
 	HookEvent("round_start", eRoundStart);
 	
 	AddCommandListener(CmdOpenDoor, "choose_opendoor");
-}
-
-public OnMapStart()
-{
-	PrecacheModel(MODEL_NICK, true);
-	PrecacheModel(MODEL_ROCHELLE, true);
-	PrecacheModel(MODEL_COACH, true);
-	PrecacheModel(MODEL_ELLIS, true);
-	PrecacheModel(MODEL_BILL, true);
-	PrecacheModel(MODEL_ZOEY, true);
-	PrecacheModel(MODEL_ZOEYLIGHT, true);
-	PrecacheModel(MODEL_FRANCIS, true);
-	PrecacheModel(MODEL_FRANCISLIGHT, true);
-	PrecacheModel(MODEL_LOUIS, true);
 }
 
 AttachLegs(iClient)
