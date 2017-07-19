@@ -6,7 +6,7 @@
 
 #define DEBUG 0
 
-#define PLUGIN_VERSION "1.2"
+#define PLUGIN_VERSION "1.2.1"
 
 native LMC_GetClientOverlayModel(iClient);// remove this and enable the include to compile with the include this is just here for AM compiler
 
@@ -703,7 +703,7 @@ static CheckAnimation(iClient, iSequence)
 		{
 			switch(iSequence)
 			{
-				case 200, 640, 197, 245, 182, 836, 206, 203, 643, 816, 596, 617, 792, 188, 191, 378, 227, 230, 233, 236, 239, 649, 842://runn
+				case 200, 640, 197, 245, 182, 836, 206, 203, 643, 816, 596, 617, 792, 188, 191, 378, 227, 230, 233, 236, 239, 649, 842, 242://runn
 					return 185;
 				case 824, 42, 39, 564, 804, 584, 605, 776, 24, 27, 373, 57, 60, 63, 66, 72, 577, 69, 75, 826, 81, 78, 806, 574://still
 					return 18;
