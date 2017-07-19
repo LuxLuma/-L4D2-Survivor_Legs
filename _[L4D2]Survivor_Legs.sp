@@ -4,9 +4,9 @@
 #include <sdktools>
 #include <sdkhooks>
 
-#define DEBUG 1
+#define DEBUG 0
 
-#define PLUGIN_VERSION "1.1"
+#define PLUGIN_VERSION "1.2"
 
 native LMC_GetClientOverlayModel(iClient);// remove this and enable the include to compile with the include this is just here for AM compiler
 
@@ -127,14 +127,14 @@ AttachLegs(iClient)
 	SDKHook(iEntity, SDKHook_SetTransmit, HideModel);
 }
 
-//door fix, (the door is not buggy on round restart but only on first map spawn)
+//door fix, (the door is not buggy on round restart but only on first map spawn) valve please, using attach points don't cause this just standard parenting...
 public Action:CmdOpenDoor(iClient, const String:sCommand[], iArg)
 {
 	static bool:bIgnoreCmd = false;
 	if(bIgnoreCmd)
 		return Plugin_Continue;
 	
-	if(IsFakeClient(iClient) || GetClientTeam(iClient) != 2 || !IsPlayerAlive(iClient) || GetEntProp(iClient, Prop_Send, "m_isIncapacitated", 1))
+	if(IsFakeClient(iClient) || GetClientTeam(iClient) != 2 || !IsPlayerAlive(iClient) || GetEntProp(iClient, Prop_Send, "m_isIncapacitated", 1))// there is a bug where you can open doors while incapped typing in the choose_open or choose_close on standard server.(maybe ill make a fix)
 		return Plugin_Continue;
 	
 	if(!IsValidEntRef(iEntRef[iClient]))
@@ -371,9 +371,6 @@ public Hook_OnPostThinkPost(iClient)
 	static i;
 	for (i = 1; i < 23; i++)
 		SetEntPropFloat(iEntity, Prop_Send, "m_flPoseParameter", GetEntPropFloat(iClient, Prop_Send, "m_flPoseParameter", i), i);//credit to death chaos for animating legs
-	
-	if(GetEntProp(iClient, Prop_Send, "m_clientIntensity") < 1)
-		SetEntProp(iClient, Prop_Send, "m_clientIntensity", 1);
 		
 	
 	if(bTeleported[iClient])
@@ -454,7 +451,7 @@ public Action:OnPlayerRunCmd(iClient, &buttons)
 	if(GetClientTeam(iClient) != 2 || !IsPlayerAlive(iClient) || IsFakeClient(iClient))
 		return Plugin_Continue;
 	
-	//pickup weapons ect fix
+	//pickup weapons ect fix because parenting props to survivors is buggy af
 	if((buttons & IN_USE) && !bTeleported[iClient])
 	{
 		static iSurvivorLegs;
