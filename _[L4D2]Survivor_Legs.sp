@@ -6,7 +6,7 @@
 
 #define DEBUG 0
 
-#define PLUGIN_VERSION "1.2.1"
+#define PLUGIN_VERSION "1.2.2"
 
 native LMC_GetClientOverlayModel(iClient);// remove this and enable the include to compile with the include this is just here for AM compiler
 
@@ -71,15 +71,9 @@ AttachLegs(iClient)
 	if(IsValidEntRef(iEntRef[iClient]))
 	{
 		iEntity = EntRefToEntIndex(iEntRef[iClient]);
-		GetEntPropString(iClient, Prop_Data, "m_ModelName", sModel, sizeof(sModel));
-		SetEntityModel(iEntity, sModel);
-		
-		if(bLMC_Available)
-			AttachOverlayLegs(iClient, true);
-		
-		return;
+		AcceptEntityInput(iEntity, "kill");
+		iEntRef[iClient] = -1;
 	}
-		
 	
 	iEntity = CreateEntityByName("prop_dynamic_override");
 	if(iEntity < 0)
