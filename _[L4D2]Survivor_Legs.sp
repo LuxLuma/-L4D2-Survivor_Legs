@@ -6,7 +6,7 @@
 
 #define DEBUG 0
 
-#define PLUGIN_VERSION "1.2.2"
+#define PLUGIN_VERSION "1.2.3"
 
 native LMC_GetClientOverlayModel(iClient);// remove this and enable the include to compile with the include this is just here for AM compiler
 
@@ -71,9 +71,15 @@ AttachLegs(iClient)
 	if(IsValidEntRef(iEntRef[iClient]))
 	{
 		iEntity = EntRefToEntIndex(iEntRef[iClient]);
-		AcceptEntityInput(iEntity, "kill");
-		iEntRef[iClient] = -1;
+		GetEntPropString(iClient, Prop_Data, "m_ModelName", sModel, sizeof(sModel));
+		SetEntityModel(iEntity, sModel);
+		
+		if(bLMC_Available)
+			AttachOverlayLegs(iClient, true);
+		
+		return;
 	}
+		
 	
 	iEntity = CreateEntityByName("prop_dynamic_override");
 	if(iEntity < 0)
@@ -168,7 +174,7 @@ AttachOverlayLegs(iClient, bool:bBaseReattach)
 	static String:sModel[PLATFORM_MAX_PATH];
 	GetEntPropString(iOverlayModel, Prop_Data, "m_ModelName", sModel, sizeof(sModel));
 	
-	if(IsValidEntRef(iEnt))
+	if(IsValidEntRef(iAttachedRef[iSurvivorLegs]))
 	{
 		if(!bBaseReattach)
 		{
@@ -274,12 +280,9 @@ public ePlayerSpawn(Handle:hEvent, const String:sEventName[], bool:bDontBroadcas
 	if(!IsClientInGame(iClient) || IsFakeClient(iClient) || !IsPlayerAlive(iClient) || GetClientTeam(iClient) != 2)
 		return;
 	
-	new iEntity = iEntRef[iClient];
-	if(IsValidEntRef(iEntity))
-	{
-		AcceptEntityInput(iEntity, "kill");
-		iEntRef[iClient] = -1;
-	}
+	if(IsValidEntRef(iEntRef[iClient]))
+		return;
+	
 	RequestFrame(NextFrame, GetClientUserId(iClient));
 }
 
@@ -305,11 +308,10 @@ public eTeamChange(Handle:hEvent, const String:sEventName[], bool:bDontBroadcast
 	if(iClient < 1 || iClient > MaxClients || !IsClientInGame(iClient))
 		return;
 	
-	new iEntity = iEntRef[iClient];
-	if(!IsValidEntRef(iEntity))
+	if(!IsValidEntRef(iEntRef[iClient]))
 		return;
 	
-	AcceptEntityInput(iEntity, "kill");
+	AcceptEntityInput(EntRefToEntIndex(iEntRef[iClient]), "kill");
 	iEntRef[iClient] = -1;
 }
 
@@ -324,11 +326,10 @@ public ePlayerDeath(Handle:hEvent, const String:sEventName[], bool:bDontBroadcas
 	if(!IsClientInGame(iVictim) || IsFakeClient(iVictim) || GetClientTeam(iVictim) != 2)
 		return;
 	
-	new iEntity = iEntRef[iVictim];
-	if(!IsValidEntRef(iEntity))
+	if(!IsValidEntRef(iEntRef[iVictim]))
 		return;
 	
-	AcceptEntityInput(iEntity, "kill");
+	AcceptEntityInput(EntRefToEntIndex(iEntRef[iVictim]), "kill");
 	iEntRef[iVictim] = -1;
 }
 
@@ -390,7 +391,7 @@ public OnClientDisconnect(iClient)
 	if(!IsValidEntRef(iEntRef[iClient]))
 		return;
 	
-	AcceptEntityInput(iEntRef[iClient], "kill");
+	AcceptEntityInput(EntRefToEntIndex(iEntRef[iClient]), "kill");
 	iEntRef[iClient] = -1;
 }
 
