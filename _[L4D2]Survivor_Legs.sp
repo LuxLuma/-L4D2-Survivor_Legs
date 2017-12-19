@@ -91,7 +91,7 @@ AttachLegs(iClient)
 	DispatchSpawn(iEntity);
 	ActivateEntity(iEntity);
 	
-	SetEntProp(iEntity, Prop_Data, "m_CollisionGroup", 0x0004);
+	SetEntProp(iEntity, Prop_Data, "m_CollisionGroup", 0);
 	
 	static Float:fPos[3];
 	static Float:fAng[3];
@@ -506,7 +506,7 @@ static bool:ShouldHideLegs(iClient)
 			else if(iTarget != iClient)
 				return true;
 		}
-		case 4, 6, 7, 8, 9, 10:
+		case 4, 5, 6, 7, 8, 9, 10:
 			return true;
 	}
 	
