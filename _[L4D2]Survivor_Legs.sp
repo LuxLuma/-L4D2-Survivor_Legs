@@ -6,7 +6,7 @@
 
 #define DEBUG 0
 
-#define PLUGIN_VERSION "1.2.3"
+#define PLUGIN_VERSION "1.2.5"
 
 native LMC_GetClientOverlayModel(iClient);// remove this and enable the include to compile with the include this is just here for AM compiler
 
@@ -134,20 +134,13 @@ public Action:CmdOpenDoor(iClient, const String:sCommand[], iArg)
 	if(bIgnoreCmd)
 		return Plugin_Continue;
 	
-	if(IsFakeClient(iClient) || GetClientTeam(iClient) != 2 || !IsPlayerAlive(iClient) || GetEntProp(iClient, Prop_Send, "m_isIncapacitated", 1))// there is a bug where you can open doors while incapped typing in the choose_open or choose_close on standard server.(maybe ill make a fix)
+	if(GetClientTeam(iClient) != 2 || !IsPlayerAlive(iClient))
 		return Plugin_Continue;
-	
-	if(!IsValidEntRef(iEntRef[iClient]))
-		return Plugin_Continue;
-	
-	static iSurvivorLegs;
-	iSurvivorLegs = EntRefToEntIndex(iEntRef[iClient]);
-	
-	bTeleported[iClient] = true;
-	TeleportEntity(iSurvivorLegs, Float:{0.0, 0.0, -300.0}, NULL_VECTOR, NULL_VECTOR);
 	
 	bIgnoreCmd = true;
+	TeleportLegs(true);
 	FakeClientCommand(iClient, "choose_opendoor");
+	TeleportLegs(false);
 	bIgnoreCmd = false;
 	
 	return Plugin_Handled;
@@ -858,4 +851,29 @@ static CheckAnimation(iClient, iSequence)
 		}
 	}
 	return iSequence;
+}
+
+static TeleportLegs(bool:bAway)
+{
+	static i;
+	if(bAway)
+	{
+		for(i = 1; i <= MaxClients; i++)
+		{
+			if(bTeleported[i] || !IsValidEntRef(EntRefToEntIndex(iEntRef[i])))
+				continue;
+			
+			TeleportEntity(EntRefToEntIndex(iEntRef[i]), Float:{0.0, 0.0, -300.0}, NULL_VECTOR, NULL_VECTOR);
+		}
+	}
+	else
+	{
+		for(i = 1; i <= MaxClients; i++)
+		{
+			if(bTeleported[i] || !IsValidEntRef(EntRefToEntIndex(iEntRef[i])))
+				continue;
+			
+			TeleportEntity(EntRefToEntIndex(iEntRef[i]), Float:{0.0, 0.0, -20.0}, NULL_VECTOR, NULL_VECTOR);
+		}
+	}
 }
