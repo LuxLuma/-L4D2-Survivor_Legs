@@ -23,6 +23,11 @@ static bool bLMC_Available = false;
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
+	if(GetEngineVersion() != Engine_Left4Dead2)
+	{
+		strcopy(error, err_max, "Plugin only supports Left 4 Dead 2");
+		return APLRes_SilentFailure;
+	}
 	MarkNativeAsOptional("LMC_GetClientOverlayModel");
 	return APLRes_Success;
 }
