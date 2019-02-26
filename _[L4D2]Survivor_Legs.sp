@@ -8,7 +8,7 @@
 
 #define DEBUG 0
 
-#define PLUGIN_VERSION "1.2.6"
+#define PLUGIN_VERSION "1.3.0"
 
 native int LMC_GetClientOverlayModel(int iClient);// remove this and enable the include to compile with the include this is just here for AM compiler
 
