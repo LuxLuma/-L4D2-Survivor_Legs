@@ -63,6 +63,13 @@ public void OnPluginStart()
 	HookEvent("round_start", eRoundStart);
 	
 	AddCommandListener(CmdOpenDoor, "choose_opendoor");
+	
+	HookConVarChange(FindConVar("mp_facefronttime"), eConvarChanged);
+}
+
+public void eConvarChanged(Handle hCvar, const char[] sOldVal, const char[] sNewVal)
+{
+	SetConVarInt(hCvar, -1, true);
 }
 
 void AttachLegs(int iClient)
