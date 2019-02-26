@@ -4,45 +4,47 @@
 #include <sdktools>
 #include <sdkhooks>
 
+#pragma newdecls required
+
 #define DEBUG 0
 
 #define PLUGIN_VERSION "1.2.6"
 
-native LMC_GetClientOverlayModel(iClient);// remove this and enable the include to compile with the include this is just here for AM compiler
+native int LMC_GetClientOverlayModel(int iClient);// remove this and enable the include to compile with the include this is just here for AM compiler
 
-static iEntRef[MAXPLAYERS+1];
-static iEntOwner[2048+1];
-static iAttachedRef[2048+1];
-static iAttachedOwner[2048+1];
-static bool:bThirdPerson[MAXPLAYERS+1];
-static bool:bTeleported[MAXPLAYERS+1];
+static int iEntRef[MAXPLAYERS+1];
+static int iEntOwner[2048+1];
+static int iAttachedRef[2048+1];
+static int iAttachedOwner[2048+1];
+static bool bThirdPerson[MAXPLAYERS+1];
+static bool bTeleported[MAXPLAYERS+1];
 
-static bool:bLMC_Available = false;
+static bool bLMC_Available = false;
 
-public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
 	MarkNativeAsOptional("LMC_GetClientOverlayModel");
 	return APLRes_Success;
 }
 
-public OnAllPluginsLoaded()
+public void OnAllPluginsLoaded()
 {
 	bLMC_Available = LibraryExists("L4D2ModelChanger");
 }
 
-public OnLibraryAdded(const String:sName[])
+public void OnLibraryAdded(const char[] sName)
 {
-	if(StrEqual(sName, "L4D2ModelChanger"))
+	if(StrEqual(sName, "LMCCore"))
 		bLMC_Available = true;
 }
 
-public OnLibraryRemoved(const String:sName[])
+public void OnLibraryRemoved(const char[] sName)
 {
-	if(StrEqual(sName, "L4D2ModelChanger"))
+	if(StrEqual(sName, "LMCCore"))
 		bLMC_Available = false;
 }
 
-public Plugin:myinfo =
+public Plugin myinfo =
 {
 	name = "[L4D2]Survivor_Legs_Restore",
 	author = "Lux",
@@ -51,7 +53,7 @@ public Plugin:myinfo =
 	url = "https://forums.alliedmods.net/showthread.php?t=299560"
 };
 
-public OnPluginStart()
+public void OnPluginStart()
 {
 	CreateConVar("survivor_legs_version", PLUGIN_VERSION, "[L4D2]Survivor_Legs_version", FCVAR_SPONLY|FCVAR_DONTRECORD|FCVAR_NOTIFY);
 	
@@ -63,10 +65,10 @@ public OnPluginStart()
 	AddCommandListener(CmdOpenDoor, "choose_opendoor");
 }
 
-AttachLegs(iClient)
+void AttachLegs(int iClient)
 {
-	static iEntity;	
-	static String:sModel[PLATFORM_MAX_PATH];
+	int iEntity;	
+	char sModel[PLATFORM_MAX_PATH];
 	
 	if(IsValidEntRef(iEntRef[iClient]))
 	{
@@ -93,13 +95,13 @@ AttachLegs(iClient)
 	
 	SetEntProp(iEntity, Prop_Data, "m_CollisionGroup", 0);
 	
-	static Float:fPos[3];
-	static Float:fAng[3];
+	float fPos[3];
+	float fAng[3];
 	GetClientAbsOrigin(iClient, fPos);
 	GetClientEyeAngles(iClient, fAng);
 	
 	TeleportEntity(iEntity, fPos, NULL_VECTOR, NULL_VECTOR);
-	TeleportEntity(iClient, NULL_VECTOR, Float:{89.0, 0.0, 0.0}, NULL_VECTOR);
+	TeleportEntity(iClient, NULL_VECTOR, view_as<float>({89.0, 0.0, 0.0}), NULL_VECTOR);
 	
 	AcceptEntityInput(iEntity, "TurnOn");
 	SetVariantString("!activator");
@@ -110,11 +112,11 @@ AttachLegs(iClient)
 	
 	SetEntProp(iEntity, Prop_Send, "m_noGhostCollision", 1, 1);
 	
-	SetEntPropVector(iEntity, Prop_Send, "m_vecMins", Float:{0.0, 0.0, 0.0});
-	SetEntPropVector(iEntity, Prop_Send, "m_vecMaxs", Float:{0.0, 0.0, 0.0});
+	SetEntPropVector(iEntity, Prop_Send, "m_vecMins", view_as<float>({0.0, 0.0, 0.0}));
+	SetEntPropVector(iEntity, Prop_Send, "m_vecMaxs", view_as<float>({0.0, 0.0, 0.0}));
 
 	
-	TeleportEntity(iEntity, Float:{0.0, 0.0, -20.0}, Float:{-89.0, 0.0, 0.0}, NULL_VECTOR);
+	TeleportEntity(iEntity, view_as<float>({0.0, 0.0, -20.0}), view_as<float>({-89.0, 0.0, 0.0}), NULL_VECTOR);
 	TeleportEntity(iClient, NULL_VECTOR, fAng, NULL_VECTOR);
 	
 	iEntRef[iClient] = EntIndexToEntRef(iEntity);
@@ -128,9 +130,9 @@ AttachLegs(iClient)
 }
 
 //door fix, (the door is not buggy on round restart but only on first map spawn) valve please, using attach points don't cause this just standard parenting...
-public Action:CmdOpenDoor(iClient, const String:sCommand[], iArg)
+public Action CmdOpenDoor(int iClient, const char[] sCommand, int iArg)
 {
-	static bool:bIgnoreCmd = false;
+	static bool bIgnoreCmd = false;
 	if(bIgnoreCmd)
 		return Plugin_Continue;
 	
@@ -147,24 +149,21 @@ public Action:CmdOpenDoor(iClient, const String:sCommand[], iArg)
 }
 
 //lmcstuff
-AttachOverlayLegs(iClient, bool:bBaseReattach)
+void AttachOverlayLegs(int iClient, bool bBaseReattach)
 {
-	static iSurvivorLegs;
-	iSurvivorLegs = EntRefToEntIndex(iEntRef[iClient]);
+	int iSurvivorLegs = EntRefToEntIndex(iEntRef[iClient]);
 	
 	if(!IsValidEntRef(iSurvivorLegs))
 		return;
 		
-	static iOverlayModel;
-	iOverlayModel = LMC_GetClientOverlayModel(iClient);
+	int iOverlayModel = LMC_GetClientOverlayModel(iClient);
 	
 	if(iOverlayModel == -1)
 		return;
 		
-	static iEnt;
-	iEnt = EntRefToEntIndex(iAttachedRef[iSurvivorLegs]);
+	int iEnt = EntRefToEntIndex(iAttachedRef[iSurvivorLegs]);
 	
-	static String:sModel[PLATFORM_MAX_PATH];
+	char sModel[PLATFORM_MAX_PATH];
 	GetEntPropString(iOverlayModel, Prop_Data, "m_ModelName", sModel, sizeof(sModel));
 	
 	if(IsValidEntRef(iAttachedRef[iSurvivorLegs]))
@@ -187,13 +186,13 @@ AttachOverlayLegs(iClient, bool:bBaseReattach)
 	DispatchSpawn(iEnt);
 	ActivateEntity(iEnt);
 	
-	static Float:fPos[3];
+	float fPos[3];
 	GetClientAbsOrigin(iClient, fPos);
 	TeleportEntity(iEnt, fPos, NULL_VECTOR, NULL_VECTOR);
 	
 	SetEntProp(iEnt, Prop_Data, "m_CollisionGroup", 0x0004);
-	SetEntPropVector(iEnt, Prop_Send, "m_vecMins", Float:{0.0, 0.0, 0.0});
-	SetEntPropVector(iEnt, Prop_Send, "m_vecMaxs", Float:{0.0, 0.0, 0.0});
+	SetEntPropVector(iEnt, Prop_Send, "m_vecMins", view_as<float>({0.0, 0.0, 0.0}));
+	SetEntPropVector(iEnt, Prop_Send, "m_vecMaxs", view_as<float>({0.0, 0.0, 0.0}));
 	 
 	SetVariantString("!activator");
 	AcceptEntityInput(iEnt, "SetParent", iSurvivorLegs);
@@ -217,12 +216,12 @@ AttachOverlayLegs(iClient, bool:bBaseReattach)
 	
 }
 
-public Action:HideModel(iEntity, iClient)
+public Action HideModel(int iEntity, int iClient)
 {
 	if(IsFakeClient(iClient))
 		return Plugin_Continue;
 	
-	static iOwner;
+	static int iOwner;
 	iOwner = GetClientOfUserId(iEntOwner[iEntity]);
 	
 	if(iOwner < 1 || !IsClientInGame(iOwner))
@@ -237,12 +236,12 @@ public Action:HideModel(iEntity, iClient)
 	return Plugin_Continue;
 }
 
-public Action:HideOverlayModel(iEntity, iClient)
+public Action HideOverlayModel(int iEntity, int iClient)
 {
 	if(IsFakeClient(iClient))
 		return Plugin_Continue;
 	
-	static iOwner;
+	static int iOwner;
 	iOwner = GetClientOfUserId(iAttachedOwner[iEntity]);
 	
 	if(iOwner < 1 || !IsClientInGame(iOwner))
@@ -257,15 +256,14 @@ public Action:HideOverlayModel(iEntity, iClient)
 	return Plugin_Continue;
 }
 
-public TP_OnThirdPersonChanged(iClient, bool:bIsThirdPerson)
+public void TP_OnThirdPersonChanged(int iClient, bool bIsThirdPerson)
 {
 	bThirdPerson[iClient] = bIsThirdPerson;
 }
 
-public ePlayerSpawn(Handle:hEvent, const String:sEventName[], bool:bDontBroadcast)
-{	
-	static iClient;
-	iClient = GetClientOfUserId(GetEventInt(hEvent, "userid"));
+public void ePlayerSpawn(Handle hEvent, const char[] sEventName, bool bDontBroadcast)
+{
+	int iClient = GetClientOfUserId(GetEventInt(hEvent, "userid"));
 	
 	if(iClient < 1 || iClient > MaxClients)
 		return;
@@ -279,10 +277,9 @@ public ePlayerSpawn(Handle:hEvent, const String:sEventName[], bool:bDontBroadcas
 	RequestFrame(NextFrame, GetClientUserId(iClient));
 }
 
-public NextFrame(any:iUserID)
+public void NextFrame(any iUserID)
 {
-	static iClient;
-	iClient = GetClientOfUserId(iUserID);
+	int iClient = GetClientOfUserId(iUserID);
 	
 	if(iClient < 1 || iClient > MaxClients)
 		return;
@@ -293,10 +290,9 @@ public NextFrame(any:iUserID)
 	AttachLegs(iClient);
 }
 
-public eTeamChange(Handle:hEvent, const String:sEventName[], bool:bDontBroadcast)
+public void eTeamChange(Handle hEvent, const char[] sEventName, bool bDontBroadcast)
 {
-	static iClient;
-	iClient = GetClientOfUserId(GetEventInt(hEvent, "userid"));
+	int iClient = GetClientOfUserId(GetEventInt(hEvent, "userid"));
 	
 	if(iClient < 1 || iClient > MaxClients || !IsClientInGame(iClient))
 		return;
@@ -308,10 +304,9 @@ public eTeamChange(Handle:hEvent, const String:sEventName[], bool:bDontBroadcast
 	iEntRef[iClient] = -1;
 }
 
-public ePlayerDeath(Handle:hEvent, const String:sEventName[], bool:bDontBroadcast)
+public void ePlayerDeath(Handle hEvent, const char[] sEventName, bool bDontBroadcast)
 {
-	static iVictim;
-	iVictim = GetClientOfUserId(GetEventInt(hEvent, "userid"));
+	int iVictim = GetClientOfUserId(GetEventInt(hEvent, "userid"));
 	
 	if(iVictim < 1 || iVictim > MaxClients)
 		return;
@@ -326,18 +321,18 @@ public ePlayerDeath(Handle:hEvent, const String:sEventName[], bool:bDontBroadcas
 	iEntRef[iVictim] = -1;
 }
 
-public Hook_OnPostThinkPost(iClient)
+public void Hook_OnPostThinkPost(int iClient)
 {
 	if(!IsPlayerAlive(iClient) || GetClientTeam(iClient) != 2) 
 		return;
 	
-	static iEntity;
+	static int iEntity;
 	iEntity = EntRefToEntIndex(iEntRef[iClient]);
 	
 	if(!IsValidEntRef(iEntity))
 		return;
 	
-	static iModelIndex[MAXPLAYERS+1] = {0, ...};		
+	static int iModelIndex[MAXPLAYERS+1] = {0, ...};		
 	if(iModelIndex[iClient] != GetEntProp(iClient, Prop_Data, "m_nModelIndex", 2))
 	{	
 		//LMC Reattachbase
@@ -348,7 +343,7 @@ public Hook_OnPostThinkPost(iClient)
 	if(bTeleported[iClient])
 	{
 		bTeleported[iClient] = false;
-		TeleportEntity(iEntity, Float:{0.0, 0.0, -20.0}, NULL_VECTOR, NULL_VECTOR);
+		TeleportEntity(iEntity, view_as<float>({0.0, 0.0, -20.0}), NULL_VECTOR, NULL_VECTOR);
 	}
 	
 	
@@ -362,12 +357,12 @@ public Hook_OnPostThinkPost(iClient)
 	SetEntPropFloat(iEntity, Prop_Send, "m_flPoseParameter", -40.0, 0);
 	SetEntPropFloat(iEntity, Prop_Send, "m_flCycle", GetEntPropFloat(iClient, Prop_Send, "m_flCycle"));
 	
-	static i;
+	static int i;
 	for (i = 1; i < 23; i++)
 		SetEntPropFloat(iEntity, Prop_Send, "m_flPoseParameter", GetEntPropFloat(iClient, Prop_Send, "m_flPoseParameter", i), i);//credit to death chaos for animating legs
 }
 
-public OnClientPutInServer(iClient)
+public void OnClientPutInServer(int iClient)
 {
 	if(IsFakeClient(iClient))
 		return;
@@ -375,7 +370,7 @@ public OnClientPutInServer(iClient)
 	SDKHook(iClient, SDKHook_PostThinkPost, Hook_OnPostThinkPost);
 }
 
-public OnClientDisconnect(iClient)
+public void OnClientDisconnect(int iClient)
 {
 	if(!IsFakeClient(iClient))
 		SDKUnhook(iClient, SDKHook_PostThinkPost, Hook_OnPostThinkPost);
@@ -387,13 +382,13 @@ public OnClientDisconnect(iClient)
 	iEntRef[iClient] = -1;
 }
 
-public eRoundStart(Handle:hEvent, const String:sEventName[], bool:bDontBroadcast)
+public void eRoundStart(Handle hEvent, const char[] sEventName, bool bDontBroadcast)
 {
-	for(new i = 1; i <= MaxClients; i++)
+	for(int i = 1; i <= MaxClients; i++)
 		iEntRef[i] = -1;
 }
 
-public LMC_OnClientModelApplied(iClient, iEntity, const String:sModel[PLATFORM_MAX_PATH], bool:bBaseReattach)
+public void LMC_OnClientModelApplied(int iClient, int iEntity, const char sModel[PLATFORM_MAX_PATH], bool bBaseReattach)
 {
 	if(!IsClientInGame(iClient) || GetClientTeam(iClient) != 2)
 		return;
@@ -401,7 +396,7 @@ public LMC_OnClientModelApplied(iClient, iEntity, const String:sModel[PLATFORM_M
 	AttachOverlayLegs(iClient, bBaseReattach);
 }
 
-public LMC_OnClientModelChanged(iClient, iEntity, const String:sModel[PLATFORM_MAX_PATH])
+public void LMC_OnClientModelChanged(int iClient, int iEntity, const char sModel[PLATFORM_MAX_PATH])
 {
 	if(!IsClientInGame(iClient) || GetClientTeam(iClient) != 2)
 		return;
@@ -409,19 +404,17 @@ public LMC_OnClientModelChanged(iClient, iEntity, const String:sModel[PLATFORM_M
 	AttachOverlayLegs(iClient, false);
 }
 
-public LMC_OnClientModelDestroyed(iClient, iEntity)
+public void LMC_OnClientModelDestroyed(int iClient, int iEntity)
 {
 	if(!IsClientInGame(iClient) || !IsPlayerAlive(iClient) || GetClientTeam(iClient) != 2)
 		return;
 	
-	static iSurvivorLegs;
-	iSurvivorLegs = EntRefToEntIndex(iEntRef[iClient]);
+	int iSurvivorLegs = EntRefToEntIndex(iEntRef[iClient]);
 	
 	if(!IsValidEntRef(iSurvivorLegs))
 		return;
 	
-	static iOverlayLegs;
-	iOverlayLegs = EntRefToEntIndex(iAttachedRef[iSurvivorLegs]);
+	int iOverlayLegs = EntRefToEntIndex(iAttachedRef[iSurvivorLegs]);
 	
 	if(!IsValidEntRef(iOverlayLegs))
 		return;
@@ -433,7 +426,7 @@ public LMC_OnClientModelDestroyed(iClient, iEntity)
 	AcceptEntityInput(iOverlayLegs, "Kill");
 }
 
-public Action:OnPlayerRunCmd(iClient, &buttons)
+public Action OnPlayerRunCmd(int iClient, int &buttons)
 {
 	if(GetClientTeam(iClient) != 2 || !IsPlayerAlive(iClient) || IsFakeClient(iClient))
 		return Plugin_Continue;
@@ -441,24 +434,24 @@ public Action:OnPlayerRunCmd(iClient, &buttons)
 	//pickup weapons ect fix because parenting props to survivors is buggy af
 	if((buttons & IN_USE) && !bTeleported[iClient])
 	{
-		static iSurvivorLegs;
+		static int iSurvivorLegs;
 		iSurvivorLegs = EntRefToEntIndex(iEntRef[iClient]);
 		if(!IsValidEntRef(iSurvivorLegs))
 			return Plugin_Continue;
 		
 		bTeleported[iClient] = true;
-		TeleportEntity(iSurvivorLegs, Float:{0.0, 0.0, -300.0}, NULL_VECTOR, NULL_VECTOR);
+		TeleportEntity(iSurvivorLegs, view_as<float>({0.0, 0.0, -300.0}), NULL_VECTOR, NULL_VECTOR);
 	}
 	
 	return Plugin_Continue;
 }
 
-static bool:IsValidEntRef(iEnt)
+static bool IsValidEntRef(int iEnt)
 {
 	return (iEnt != 0 && EntRefToEntIndex(iEnt) != INVALID_ENT_REFERENCE);
 }
 
-static bool:ShouldHideLegs(iClient) 
+static bool ShouldHideLegs(int iClient) 
 {
 	if(bThirdPerson[iClient])
 		return true;
@@ -490,7 +483,7 @@ static bool:ShouldHideLegs(iClient)
 	{
 		case 1:
 		{
-			static iTarget;
+			static int iTarget;
 			iTarget = GetEntPropEnt(iClient, Prop_Send, "m_useActionTarget");
 			
 			if(iTarget == GetEntPropEnt(iClient, Prop_Send, "m_useActionOwner"))
@@ -502,7 +495,7 @@ static bool:ShouldHideLegs(iClient)
 			return true;
 	}
 	
-	static String:sModel[31];
+	static char sModel[31];
 	GetEntPropString(iClient, Prop_Data, "m_ModelName", sModel, sizeof(sModel));
 	
 	switch(sModel[29])
@@ -584,9 +577,9 @@ static bool:ShouldHideLegs(iClient)
 	return false;
 }
 
-static CheckAnimation(iClient, iSequence)
+static int CheckAnimation(int iClient, int iSequence)
 {
-	static String:sModel[31];
+	static char sModel[31];
 	GetEntPropString(iClient, Prop_Data, "m_ModelName", sModel, sizeof(sModel));
 	
 	switch(sModel[29])
@@ -852,9 +845,9 @@ static CheckAnimation(iClient, iSequence)
 	return iSequence;
 }
 
-static TeleportLegs(bool:bAway)
+static void TeleportLegs(bool bAway)
 {
-	static i;
+	static int i;
 	if(bAway)
 	{
 		for(i = 1; i <= MaxClients; i++)
@@ -862,7 +855,7 @@ static TeleportLegs(bool:bAway)
 			if(bTeleported[i] || !IsValidEntRef(EntRefToEntIndex(iEntRef[i])))
 				continue;
 			
-			TeleportEntity(EntRefToEntIndex(iEntRef[i]), Float:{0.0, 0.0, -300.0}, NULL_VECTOR, NULL_VECTOR);
+			TeleportEntity(EntRefToEntIndex(iEntRef[i]), view_as<float>({0.0, 0.0, -300.0}), NULL_VECTOR, NULL_VECTOR);
 		}
 	}
 	else
@@ -872,7 +865,7 @@ static TeleportLegs(bool:bAway)
 			if(bTeleported[i] || !IsValidEntRef(EntRefToEntIndex(iEntRef[i])))
 				continue;
 			
-			TeleportEntity(EntRefToEntIndex(iEntRef[i]), Float:{0.0, 0.0, -20.0}, NULL_VECTOR, NULL_VECTOR);
+			TeleportEntity(EntRefToEntIndex(iEntRef[i]), view_as<float>({0.0, 0.0, -20.0}), NULL_VECTOR, NULL_VECTOR);
 		}
 	}
 }
