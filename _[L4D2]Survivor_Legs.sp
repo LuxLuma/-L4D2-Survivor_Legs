@@ -6,7 +6,7 @@
 
 #define DEBUG 0
 
-#define PLUGIN_VERSION "1.2.5"
+#define PLUGIN_VERSION "1.2.6"
 
 native LMC_GetClientOverlayModel(iClient);// remove this and enable the include to compile with the include this is just here for AM compiler
 
@@ -345,6 +345,12 @@ public Hook_OnPostThinkPost(iClient)
 		AttachLegs(iClient);
 	}
 	
+	if(bTeleported[iClient])
+	{
+		bTeleported[iClient] = false;
+		TeleportEntity(iEntity, Float:{0.0, 0.0, -20.0}, NULL_VECTOR, NULL_VECTOR);
+	}
+	
 	
 	SetEntPropFloat(iEntity, Prop_Send, "m_flPlaybackRate", GetEntPropFloat(iClient, Prop_Send, "m_flPlaybackRate"));
 	SetEntProp(iEntity, Prop_Send, "m_nSequence", CheckAnimation(iClient, GetEntProp(iClient, Prop_Send, "m_nSequence", 2)), 2);
@@ -359,13 +365,6 @@ public Hook_OnPostThinkPost(iClient)
 	static i;
 	for (i = 1; i < 23; i++)
 		SetEntPropFloat(iEntity, Prop_Send, "m_flPoseParameter", GetEntPropFloat(iClient, Prop_Send, "m_flPoseParameter", i), i);//credit to death chaos for animating legs
-		
-	
-	if(bTeleported[iClient])
-	{
-		bTeleported[iClient] = false;
-		TeleportEntity(iEntity, Float:{0.0, 0.0, -20.0}, NULL_VECTOR, NULL_VECTOR);
-	}
 }
 
 public OnClientPutInServer(iClient)
@@ -648,7 +647,7 @@ static CheckAnimation(iClient, iSequence)
 					return 16;
 				case 730, 141, 198, 707, 192, 186, 686, 216, 129, 464, 292, 299, 302, 306, 303, 286, 298, 714, 297, 296, 690, 300, 301, 467, 736, 239, 242, 245, 272, 248, 251:
 					return 123;
-				case 748, 749, 593, 592, 588, 587, 720, 581, 579, 697, 601, 600:
+				case 748, 749, 593, 592, 588, 587, 720, 697, 601, 600:
 					return 233;
 				case 41, 40, 38, 46, 45, 48, 722, 39, 53, 44, 702, 43, 42, 674, 49, 50, 462:
 					return 51;
