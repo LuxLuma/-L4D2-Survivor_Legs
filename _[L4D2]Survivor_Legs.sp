@@ -153,7 +153,7 @@ public Action CmdDoor(int iClient, const char[] sCommand, int iArg)
 	
 	bIgnoreCmd = true;
 	TeleportLegs();
-	FakeClientCommand(iClient, "choose_opendoor");
+	FakeClientCommand(iClient, sCommand);
 	bIgnoreCmd = false;
 	
 	return Plugin_Handled;
