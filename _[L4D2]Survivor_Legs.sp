@@ -8,7 +8,10 @@
 
 #define DEBUG 0
 
-#define PLUGIN_VERSION "1.3.0"
+#define LEGS_TELEPORTDIST 3000.0
+#define LEGS_VIEWOFFSET -20.0
+
+#define PLUGIN_VERSION "1.4.2"
 
 native int LMC_GetClientOverlayModel(int iClient);// remove this and enable the include to compile with the include this is just here for AM compiler
 
@@ -34,7 +37,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 public void OnAllPluginsLoaded()
 {
-	bLMC_Available = LibraryExists("L4D2ModelChanger");
+	bLMC_Available = LibraryExists("LMCCore");
 }
 
 public void OnLibraryAdded(const char[] sName)
@@ -67,7 +70,8 @@ public void OnPluginStart()
 	HookEvent("player_team", eTeamChange);
 	HookEvent("round_start", eRoundStart);
 	
-	AddCommandListener(CmdOpenDoor, "choose_opendoor");
+	AddCommandListener(CmdDoor, "choose_opendoor");
+	AddCommandListener(CmdDoor, "choose_closedoor");
 	
 	HookConVarChange(FindConVar("mp_facefronttime"), eConvarChanged);
 }
@@ -102,10 +106,19 @@ void AttachLegs(int iClient)
 	GetEntPropString(iClient, Prop_Data, "m_ModelName", sModel, sizeof(sModel));
 	
 	DispatchKeyValue(iEntity, "model", sModel);
+	DispatchKeyValue(iEntity, "solid", "0");
+	DispatchKeyValue(iEntity, "spawnflags", "256");
+	
 	DispatchSpawn(iEntity);
 	ActivateEntity(iEntity);
 	
-	SetEntProp(iEntity, Prop_Data, "m_CollisionGroup", 0);
+	SetVariantString("!activator");
+	AcceptEntityInput(iEntity, "SetParent", iClient);
+	
+	SetEntityMoveType(iEntity, MOVETYPE_NONE);
+	
+	SetEntProp(iEntity, Prop_Send, "m_bClientSideAnimation", 1, 1);
+	AcceptEntityInput(iEntity, "DisableShadow");
 	
 	float fPos[3];
 	float fAng[3];
@@ -115,20 +128,7 @@ void AttachLegs(int iClient)
 	TeleportEntity(iEntity, fPos, NULL_VECTOR, NULL_VECTOR);
 	TeleportEntity(iClient, NULL_VECTOR, view_as<float>({89.0, 0.0, 0.0}), NULL_VECTOR);
 	
-	AcceptEntityInput(iEntity, "TurnOn");
-	SetVariantString("!activator");
-	AcceptEntityInput(iEntity, "SetParent", iClient);
-	
-	AcceptEntityInput(iEntity, "DisableCollision");
-	AcceptEntityInput(iEntity, "DisableShadow");
-	
-	SetEntProp(iEntity, Prop_Send, "m_noGhostCollision", 1, 1);
-	
-	SetEntPropVector(iEntity, Prop_Send, "m_vecMins", view_as<float>({0.0, 0.0, 0.0}));
-	SetEntPropVector(iEntity, Prop_Send, "m_vecMaxs", view_as<float>({0.0, 0.0, 0.0}));
-
-	
-	TeleportEntity(iEntity, view_as<float>({0.0, 0.0, -20.0}), view_as<float>({-89.0, 0.0, 0.0}), NULL_VECTOR);
+	TeleportEntity(iEntity, view_as<float>({0.0, 0.0, LEGS_VIEWOFFSET}), view_as<float>({-89.0, 0.0, 0.0}), NULL_VECTOR);
 	TeleportEntity(iClient, NULL_VECTOR, fAng, NULL_VECTOR);
 	
 	iEntRef[iClient] = EntIndexToEntRef(iEntity);
@@ -142,7 +142,7 @@ void AttachLegs(int iClient)
 }
 
 //door fix, (the door is not buggy on round restart but only on first map spawn) valve please, using attach points don't cause this just standard parenting...
-public Action CmdOpenDoor(int iClient, const char[] sCommand, int iArg)
+public Action CmdDoor(int iClient, const char[] sCommand, int iArg)
 {
 	static bool bIgnoreCmd = false;
 	if(bIgnoreCmd)
@@ -152,9 +152,8 @@ public Action CmdOpenDoor(int iClient, const char[] sCommand, int iArg)
 		return Plugin_Continue;
 	
 	bIgnoreCmd = true;
-	TeleportLegs(true);
+	TeleportLegs();
 	FakeClientCommand(iClient, "choose_opendoor");
-	TeleportLegs(false);
 	bIgnoreCmd = false;
 	
 	return Plugin_Handled;
@@ -194,32 +193,18 @@ void AttachOverlayLegs(int iClient, bool bBaseReattach)
 		return;
 	
 	DispatchKeyValue(iEnt, "model", sModel);
+	DispatchKeyValue(iEnt, "solid", "0");
+	DispatchKeyValue(iEnt, "spawnflags", "256");
 	
 	DispatchSpawn(iEnt);
 	ActivateEntity(iEnt);
 	
-	float fPos[3];
-	GetClientAbsOrigin(iClient, fPos);
-	TeleportEntity(iEnt, fPos, NULL_VECTOR, NULL_VECTOR);
-	
-	SetEntProp(iEnt, Prop_Data, "m_CollisionGroup", 0x0004);
-	SetEntPropVector(iEnt, Prop_Send, "m_vecMins", view_as<float>({0.0, 0.0, 0.0}));
-	SetEntPropVector(iEnt, Prop_Send, "m_vecMaxs", view_as<float>({0.0, 0.0, 0.0}));
-	 
-	SetVariantString("!activator");
-	AcceptEntityInput(iEnt, "SetParent", iSurvivorLegs);
+	AcceptEntityInput(iEnt, "DisableShadow");
 	 
 	SetVariantString("!activator");
 	AcceptEntityInput(iEnt, "SetAttached", iSurvivorLegs);
-	AcceptEntityInput(iEnt, "TurnOn");
-	
-	AcceptEntityInput(iEnt, "DisableCollision");
-	AcceptEntityInput(iEnt, "DisableShadow");
 	
 	SetEntityRenderMode(iSurvivorLegs, RENDER_NONE);
-	
-	SetEntProp(iSurvivorLegs, Prop_Send, "m_nMinGPULevel", 1);
-	SetEntProp(iSurvivorLegs, Prop_Send, "m_nMaxGPULevel", 1);
 	
 	iAttachedRef[iSurvivorLegs] = EntIndexToEntRef(iEnt);
 	iAttachedOwner[iEnt] = GetClientUserId(iClient);
@@ -355,16 +340,22 @@ public void Hook_OnPostThinkPost(int iClient)
 	if(bTeleported[iClient])
 	{
 		bTeleported[iClient] = false;
-		TeleportEntity(iEntity, view_as<float>({0.0, 0.0, -20.0}), NULL_VECTOR, NULL_VECTOR);
+		TeleportEntity(iEntity, view_as<float>({0.0, 0.0, LEGS_VIEWOFFSET}), NULL_VECTOR, NULL_VECTOR);
 	}
-	
 	
 	SetEntPropFloat(iEntity, Prop_Send, "m_flPlaybackRate", GetEntPropFloat(iClient, Prop_Send, "m_flPlaybackRate"));
 	SetEntProp(iEntity, Prop_Send, "m_nSequence", CheckAnimation(iClient, GetEntProp(iClient, Prop_Send, "m_nSequence", 2)), 2);
 	
-	#if DEBUG
-		PrintToChat(iClient, "Client(m_nSquence)[%i] Legs(m_nSequence)[%i]", GetEntProp(iClient, Prop_Send, "m_nSequence", 2), GetEntProp(iEntity, Prop_Send, "m_nSequence", 2));
-	#endif
+#if DEBUG
+	static int lastanim[MAXPLAYERS+1];
+	
+	int seq = GetEntProp(iClient, Prop_Send, "m_nSequence", 2);
+	if(seq != lastanim[iClient])
+	{
+		PrintToChat(iClient, "Client(m_nSquence)[%i] Legs(m_nSequence)[%i]", seq, GetEntProp(iEntity, Prop_Send, "m_nSequence", 2));
+		lastanim[iClient] = seq;
+	}
+#endif
 	
 	SetEntPropFloat(iEntity, Prop_Send, "m_flPoseParameter", -40.0, 0);
 	SetEntPropFloat(iEntity, Prop_Send, "m_flCycle", GetEntPropFloat(iClient, Prop_Send, "m_flCycle"));
@@ -432,9 +423,6 @@ public void LMC_OnClientModelDestroyed(int iClient, int iEntity)
 		return;
 	
 	SetEntityRenderMode(iSurvivorLegs, RENDER_NORMAL);
-	SetEntProp(iSurvivorLegs, Prop_Send, "m_nMinGPULevel", 0);
-	SetEntProp(iSurvivorLegs, Prop_Send, "m_nMaxGPULevel", 0);
-	
 	AcceptEntityInput(iOverlayLegs, "Kill");
 }
 
@@ -444,15 +432,13 @@ public Action OnPlayerRunCmd(int iClient, int &buttons)
 		return Plugin_Continue;
 	
 	//pickup weapons ect fix because parenting props to survivors is buggy af
-	if((buttons & IN_USE) && !bTeleported[iClient])
+	if((buttons & IN_USE))
 	{
-		static int iSurvivorLegs;
-		iSurvivorLegs = EntRefToEntIndex(iEntRef[iClient]);
+		int iSurvivorLegs = EntRefToEntIndex(iEntRef[iClient]);
 		if(!IsValidEntRef(iSurvivorLegs))
 			return Plugin_Continue;
 		
-		bTeleported[iClient] = true;
-		TeleportEntity(iSurvivorLegs, view_as<float>({0.0, 0.0, -300.0}), NULL_VECTOR, NULL_VECTOR);
+		TeleportLegs();
 	}
 	
 	return Plugin_Continue;
@@ -719,9 +705,9 @@ static int CheckAnimation(int iClient, int iSequence)
 		{
 			switch(iSequence)
 			{
-				case 81, 84, 616, 102, 105, 773, 744, 580, 24:
+				case 81, 84, 616, 102, 105, 744, 580, 39, 42:
 					return 9;
-				case 251, 206, 637, 789:
+				case 251, 206, 637, 789, 227, 230, 254:
 					return 203;
 				case 218, 783:
 					return 212;
@@ -731,37 +717,31 @@ static int CheckAnimation(int iClient, int iSequence)
 					return 191;
 				case 63, 66, 54:
 					return 60;
-				case 27, 771:
+				case 27, 771, 412, 24, 773:
 					return 21;
 				case 625:
 					return 268;
-				case 631, 413, 78:
+				case 413, 78, 260, 257:
 					return 269;
-				case 709:
+				case 709,  33, 96, 87, 90, 93, 99:
 					return 15;
 				case 730:
 					return 492;
 				case 795:
 					return 494;
-				case 39, 42:
-					return 9;
-				case 227, 230:
-					return 203;
 				case 197, 416:
 					return 173;
 				case 497, 498:
 					return 504;
-				case 412:
-					return 21;
 				case 158, 780, 167, 587, 682, 652, 772, 722, 748, 786:
 					return 161;
-				case 170:
+				case 170, 233, 236:
 					return 143;
 				case 500, 501:
 					return 505;
 				case 571, 673, 643, 742:
 					return 30;
-				case 590, 613, 725, 685, 665, 655, 754:
+				case 590, 613, 725, 685, 665, 655, 754, 215, 417, 263, 266:
 					return 221;
 				case 594, 689, 659, 745, 758:
 					return 502;
@@ -778,6 +758,8 @@ static int CheckAnimation(int iClient, int iSequence)
 					return 123;
 				case 276, 270, 271, 275, 638, 277, 755, 656, 591, 686, 726, 724, 274, 790:
 					return 272;
+				case 242, 239, 245, 631, 248, 155, 415:
+					return 267;
 			}
 		}
 		case 'e'://francis
@@ -857,27 +839,16 @@ static int CheckAnimation(int iClient, int iSequence)
 	return iSequence;
 }
 
-static void TeleportLegs(bool bAway)
+static void TeleportLegs()
 {
-	static int i;
-	if(bAway)
+	
+	for(int i = 1; i <= MaxClients; i++)
 	{
-		for(i = 1; i <= MaxClients; i++)
-		{
-			if(bTeleported[i] || !IsValidEntRef(EntRefToEntIndex(iEntRef[i])))
-				continue;
-			
-			TeleportEntity(EntRefToEntIndex(iEntRef[i]), view_as<float>({0.0, 0.0, -300.0}), NULL_VECTOR, NULL_VECTOR);
-		}
+		if(bTeleported[i] || !IsValidEntRef(EntRefToEntIndex(iEntRef[i])))
+		continue;
+		
+		TeleportEntity(EntRefToEntIndex(iEntRef[i]), view_as<float>({0.0, 0.0, LEGS_TELEPORTDIST}), NULL_VECTOR, NULL_VECTOR);
+		bTeleported[i] = true;
 	}
-	else
-	{
-		for(i = 1; i <= MaxClients; i++)
-		{
-			if(bTeleported[i] || !IsValidEntRef(EntRefToEntIndex(iEntRef[i])))
-				continue;
-			
-			TeleportEntity(EntRefToEntIndex(iEntRef[i]), view_as<float>({0.0, 0.0, -20.0}), NULL_VECTOR, NULL_VECTOR);
-		}
-	}
+	
 }
