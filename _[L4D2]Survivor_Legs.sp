@@ -8,10 +8,10 @@
 
 #define DEBUG 0
 
-#define LEGS_TELEPORTDIST 3000.0
+#define LEGS_TELEPORTDIST -3000.0
 #define LEGS_VIEWOFFSET -20.0
 
-#define PLUGIN_VERSION "1.4.2"
+#define PLUGIN_VERSION "1.4.3"
 
 native int LMC_GetClientOverlayModel(int iClient);// remove this and enable the include to compile with the include this is just here for AM compiler
 
@@ -152,8 +152,9 @@ public Action CmdDoor(int iClient, const char[] sCommand, int iArg)
 		return Plugin_Continue;
 	
 	bIgnoreCmd = true;
-	TeleportLegs();
+	TeleportLegs(true);
 	FakeClientCommand(iClient, sCommand);
+	TeleportLegs(false);
 	bIgnoreCmd = false;
 	
 	return Plugin_Handled;
@@ -438,7 +439,8 @@ public Action OnPlayerRunCmd(int iClient, int &buttons)
 		if(!IsValidEntRef(iSurvivorLegs))
 			return Plugin_Continue;
 		
-		TeleportLegs();
+		TeleportEntity(EntRefToEntIndex(iEntRef[iClient]), view_as<float>({0.0, 0.0, LEGS_TELEPORTDIST}), NULL_VECTOR, NULL_VECTOR);
+		bTeleported[iClient] = true;
 	}
 	
 	return Plugin_Continue;
@@ -707,7 +709,7 @@ static int CheckAnimation(int iClient, int iSequence)
 			{
 				case 81, 84, 616, 102, 105, 744, 580, 39, 42:
 					return 9;
-				case 251, 206, 637, 789, 227, 230, 254:
+				case 251, 206, 637, 789, 227, 230, 254, 631:
 					return 203;
 				case 218, 783:
 					return 212;
@@ -758,7 +760,7 @@ static int CheckAnimation(int iClient, int iSequence)
 					return 123;
 				case 276, 270, 271, 275, 638, 277, 755, 656, 591, 686, 726, 724, 274, 790:
 					return 272;
-				case 242, 239, 245, 631, 248, 155, 415:
+				case 242, 239, 245, 248, 155, 415:
 					return 267;
 			}
 		}
@@ -839,16 +841,26 @@ static int CheckAnimation(int iClient, int iSequence)
 	return iSequence;
 }
 
-static void TeleportLegs()
+static void TeleportLegs(bool bAway)
 {
-	
-	for(int i = 1; i <= MaxClients; i++)
+	if(bAway)
 	{
-		if(bTeleported[i] || !IsValidEntRef(EntRefToEntIndex(iEntRef[i])))
-		continue;
-		
-		TeleportEntity(EntRefToEntIndex(iEntRef[i]), view_as<float>({0.0, 0.0, LEGS_TELEPORTDIST}), NULL_VECTOR, NULL_VECTOR);
-		bTeleported[i] = true;
+		for(int i = 1; i <= MaxClients; i++)
+		{
+			if(bTeleported[i] || !IsValidEntRef(EntRefToEntIndex(iEntRef[i])))
+				continue;
+			
+			TeleportEntity(EntRefToEntIndex(iEntRef[i]), view_as<float>({0.0, 0.0, LEGS_TELEPORTDIST}), NULL_VECTOR, NULL_VECTOR);
+		}
 	}
-	
+	else
+	{
+		for(int i = 1; i <= MaxClients; i++)
+		{
+			if(bTeleported[i] || !IsValidEntRef(EntRefToEntIndex(iEntRef[i])))
+				continue;
+			
+			TeleportEntity(EntRefToEntIndex(iEntRef[i]), view_as<float>({0.0, 0.0, LEGS_TELEPORTDIST}), NULL_VECTOR, NULL_VECTOR);
+		}
+	}
 }
