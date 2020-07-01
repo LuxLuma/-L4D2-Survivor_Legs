@@ -11,7 +11,7 @@
 #define LEGS_TELEPORTDIST -3000.0
 #define LEGS_VIEWOFFSET -20.0
 
-#define PLUGIN_VERSION "1.4.3"
+#define PLUGIN_VERSION "1.4.4"
 
 native int LMC_GetClientOverlayModel(int iClient);// remove this and enable the include to compile with the include this is just here for AM compiler
 
@@ -860,7 +860,7 @@ static void TeleportLegs(bool bAway)
 			if(bTeleported[i] || !IsValidEntRef(EntRefToEntIndex(iEntRef[i])))
 				continue;
 			
-			TeleportEntity(EntRefToEntIndex(iEntRef[i]), view_as<float>({0.0, 0.0, LEGS_TELEPORTDIST}), NULL_VECTOR, NULL_VECTOR);
+			TeleportEntity(EntRefToEntIndex(iEntRef[i]), view_as<float>({0.0, 0.0, LEGS_VIEWOFFSET}), NULL_VECTOR, NULL_VECTOR);
 		}
 	}
 }
