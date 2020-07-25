@@ -8,10 +8,31 @@
 
 #define DEBUG 0
 
-#define LEGS_TELEPORTDIST -3000.0
-#define LEGS_VIEWOFFSET -20.0
+#define LEGS_TELEPORTDIST 0.0, 0.0, -3000.0
+#define LEGS_VIEWOFFSET 0.0, 0.0, -20.0
 
-#define PLUGIN_VERSION "1.4.4"
+#define EFL_DONTBLOCKLOS				(1<<25)
+
+#define PLUGIN_VERSION "1.5.0"
+
+enum
+{
+	EF_BONEMERGE			= 0x001,	// Performs bone merge on client side
+	EF_BRIGHTLIGHT 			= 0x002,	// DLIGHT centered at entity origin
+	EF_DIMLIGHT 			= 0x004,	// player flashlight
+	EF_NOINTERP				= 0x008,	// don't interpolate the next frame
+	EF_NOSHADOW				= 0x010,	// Don't cast no shadow
+	EF_NODRAW				= 0x020,	// don't draw entity
+	EF_NORECEIVESHADOW		= 0x040,	// Don't receive no shadow
+	EF_BONEMERGE_FASTCULL	= 0x080,	// For use with EF_BONEMERGE. If this is set, then it places this ent's origin at its
+										// parent and uses the parent's bbox + the max extents of the aiment.
+										// Otherwise, it sets up the parent's bones every frame to figure out where to place
+										// the aiment, which is inefficient because it'll setup the parent's bones even if
+										// the parent is not in the PVS.
+	EF_ITEM_BLINK			= 0x100,	// blink an item so that the user notices it.
+	EF_PARENT_ANIMATES		= 0x200,	// always assume that the parent entity is animating
+	EF_MAX_BITS = 10
+};
 
 native int LMC_GetClientOverlayModel(int iClient);// remove this and enable the include to compile with the include this is just here for AM compiler
 
@@ -20,7 +41,6 @@ static int iEntOwner[2048+1];
 static int iAttachedRef[2048+1];
 static int iAttachedOwner[2048+1];
 static bool bThirdPerson[MAXPLAYERS+1];
-static bool bTeleported[MAXPLAYERS+1];
 
 static bool bLMC_Available = false;
 
@@ -70,9 +90,6 @@ public void OnPluginStart()
 	HookEvent("player_team", eTeamChange);
 	HookEvent("round_start", eRoundStart);
 	
-	AddCommandListener(CmdDoor, "choose_opendoor");
-	AddCommandListener(CmdDoor, "choose_closedoor");
-	
 	HookConVarChange(FindConVar("mp_facefronttime"), eConvarChanged);
 }
 
@@ -117,6 +134,12 @@ void AttachLegs(int iClient)
 	
 	SetEntityMoveType(iEntity, MOVETYPE_NONE);
 	
+	int iFlags = GetEntProp(iEntity, Prop_Data, "m_iEFlags");
+	iFlags = iFlags |= EFL_DONTBLOCKLOS; //you never know with this game.
+	SetEntProp(iEntity, Prop_Data, "m_iEFlags", iFlags);
+	
+	SetEntProp(iEntity, Prop_Send, "m_nSolidType", 6, 1);
+	
 	SetEntProp(iEntity, Prop_Send, "m_bClientSideAnimation", 1, 1);
 	AcceptEntityInput(iEntity, "DisableShadow");
 	
@@ -128,7 +151,7 @@ void AttachLegs(int iClient)
 	TeleportEntity(iEntity, fPos, NULL_VECTOR, NULL_VECTOR);
 	TeleportEntity(iClient, NULL_VECTOR, view_as<float>({89.0, 0.0, 0.0}), NULL_VECTOR);
 	
-	TeleportEntity(iEntity, view_as<float>({0.0, 0.0, LEGS_VIEWOFFSET}), view_as<float>({-89.0, 0.0, 0.0}), NULL_VECTOR);
+	TeleportEntity(iEntity, view_as<float>({LEGS_VIEWOFFSET}), view_as<float>({-89.0, 0.0, 0.0}), NULL_VECTOR);
 	TeleportEntity(iClient, NULL_VECTOR, fAng, NULL_VECTOR);
 	
 	iEntRef[iClient] = EntIndexToEntRef(iEntity);
@@ -139,25 +162,6 @@ void AttachLegs(int iClient)
 		AttachOverlayLegs(iClient, false);
 	
 	SDKHook(iEntity, SDKHook_SetTransmit, HideModel);
-}
-
-//door fix, (the door is not buggy on round restart but only on first map spawn) valve please, using attach points don't cause this just standard parenting...
-public Action CmdDoor(int iClient, const char[] sCommand, int iArg)
-{
-	static bool bIgnoreCmd = false;
-	if(bIgnoreCmd)
-		return Plugin_Continue;
-	
-	if(GetClientTeam(iClient) != 2 || !IsPlayerAlive(iClient))
-		return Plugin_Continue;
-	
-	bIgnoreCmd = true;
-	TeleportLegs(true);
-	FakeClientCommand(iClient, sCommand);
-	TeleportLegs(false);
-	bIgnoreCmd = false;
-	
-	return Plugin_Handled;
 }
 
 //lmcstuff
@@ -189,7 +193,7 @@ void AttachOverlayLegs(int iClient, bool bBaseReattach)
 			AcceptEntityInput(iEnt, "Kill");
 	}
 	
-	iEnt = CreateEntityByName("prop_dynamic_ornament");
+	iEnt = CreateEntityByName("prop_dynamic_override");
 	if(iEnt < 0)
 		return;
 	
@@ -202,16 +206,20 @@ void AttachOverlayLegs(int iClient, bool bBaseReattach)
 	
 	AcceptEntityInput(iEnt, "DisableShadow");
 	 
-	SetVariantString("!activator");
-	AcceptEntityInput(iEnt, "SetAttached", iSurvivorLegs);
+	SetAttach(iEnt, iSurvivorLegs);
 	
-	SetEntityRenderMode(iSurvivorLegs, RENDER_NONE);
+	int iFlags = GetEntProp(iEnt, Prop_Data, "m_iEFlags");
+	iFlags = iFlags |= EFL_DONTBLOCKLOS; //you never know with this game.
+	SetEntProp(iEnt, Prop_Data, "m_iEFlags", iFlags);
+	
+	SetEntProp(iEnt, Prop_Send, "m_nSolidType", 6, 1);
+	
+	ToggleLegsRender(iSurvivorLegs, false);
 	
 	iAttachedRef[iSurvivorLegs] = EntIndexToEntRef(iEnt);
 	iAttachedOwner[iEnt] = GetClientUserId(iClient);
 		
 	SDKHook(iEnt, SDKHook_SetTransmit, HideOverlayModel);
-	
 }
 
 public Action HideModel(int iEntity, int iClient)
@@ -338,12 +346,6 @@ public void Hook_OnPostThinkPost(int iClient)
 		AttachLegs(iClient);
 	}
 	
-	if(bTeleported[iClient])
-	{
-		bTeleported[iClient] = false;
-		TeleportEntity(iEntity, view_as<float>({0.0, 0.0, LEGS_VIEWOFFSET}), NULL_VECTOR, NULL_VECTOR);
-	}
-	
 	SetEntPropFloat(iEntity, Prop_Send, "m_flPlaybackRate", GetEntPropFloat(iClient, Prop_Send, "m_flPlaybackRate"));
 	SetEntProp(iEntity, Prop_Send, "m_nSequence", CheckAnimation(iClient, GetEntProp(iClient, Prop_Send, "m_nSequence", 2)), 2);
 	
@@ -423,27 +425,22 @@ public void LMC_OnClientModelDestroyed(int iClient, int iEntity)
 	if(!IsValidEntRef(iOverlayLegs))
 		return;
 	
-	SetEntityRenderMode(iSurvivorLegs, RENDER_NORMAL);
+	ToggleLegsRender(iSurvivorLegs, true);
 	AcceptEntityInput(iOverlayLegs, "Kill");
 }
 
-public Action OnPlayerRunCmd(int iClient, int &buttons)
+void ToggleLegsRender(int iLegs, bool bShow=false)
 {
-	if(GetClientTeam(iClient) != 2 || !IsPlayerAlive(iClient) || IsFakeClient(iClient))
-		return Plugin_Continue;
-	
-	//pickup weapons ect fix because parenting props to survivors is buggy af
-	if((buttons & IN_USE))
+	int iFlags = GetEntProp(iLegs, Prop_Data, "m_fEffects");
+	if(bShow)
 	{
-		int iSurvivorLegs = EntRefToEntIndex(iEntRef[iClient]);
-		if(!IsValidEntRef(iSurvivorLegs))
-			return Plugin_Continue;
-		
-		TeleportEntity(EntRefToEntIndex(iEntRef[iClient]), view_as<float>({0.0, 0.0, LEGS_TELEPORTDIST}), NULL_VECTOR, NULL_VECTOR);
-		bTeleported[iClient] = true;
+		iFlags = iFlags &= ~0x020;
 	}
-	
-	return Plugin_Continue;
+	else
+	{
+		iFlags = iFlags |= 0x020;
+	}
+	SetEntProp(iLegs, Prop_Send, "m_fEffects", iFlags);
 }
 
 static bool IsValidEntRef(int iEnt)
@@ -841,26 +838,19 @@ static int CheckAnimation(int iClient, int iSequence)
 	return iSequence;
 }
 
-static void TeleportLegs(bool bAway)
+void SetAttach(int iEntToAttach, int iEntToAttachTo)
 {
-	if(bAway)
-	{
-		for(int i = 1; i <= MaxClients; i++)
-		{
-			if(bTeleported[i] || !IsValidEntRef(EntRefToEntIndex(iEntRef[i])))
-				continue;
-			
-			TeleportEntity(EntRefToEntIndex(iEntRef[i]), view_as<float>({0.0, 0.0, LEGS_TELEPORTDIST}), NULL_VECTOR, NULL_VECTOR);
-		}
-	}
-	else
-	{
-		for(int i = 1; i <= MaxClients; i++)
-		{
-			if(bTeleported[i] || !IsValidEntRef(EntRefToEntIndex(iEntRef[i])))
-				continue;
-			
-			TeleportEntity(EntRefToEntIndex(iEntRef[i]), view_as<float>({0.0, 0.0, LEGS_VIEWOFFSET}), NULL_VECTOR, NULL_VECTOR);
-		}
-	}
+	SetVariantString("!activator");
+	AcceptEntityInput(iEntToAttach, "SetParent", iEntToAttachTo);
+	
+	SetEntityMoveType(iEntToAttach, MOVETYPE_NONE);
+	
+	SetEntProp(iEntToAttach, Prop_Send, "m_fEffects", EF_BONEMERGE|EF_BONEMERGE_FASTCULL|EF_PARENT_ANIMATES);
+	
+	//thanks smlib for flag understanding
+	int iFlags = GetEntProp(iEntToAttach, Prop_Data, "m_usSolidFlags", 2);
+	iFlags = iFlags |= 0x0004;
+	SetEntProp(iEntToAttach, Prop_Data, "m_usSolidFlags", iFlags, 2);
+	
+	TeleportEntity(iEntToAttach, view_as<float>({0.0, 0.0, 0.0}), view_as<float>({0.0, 0.0, 0.0}), NULL_VECTOR);
 }
