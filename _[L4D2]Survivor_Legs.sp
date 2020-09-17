@@ -13,7 +13,7 @@
 
 #define EFL_DONTBLOCKLOS				(1<<25)
 
-#define PLUGIN_VERSION "1.5.0"
+#define PLUGIN_VERSION "1.5.1"
 
 enum
 {
@@ -641,11 +641,6 @@ static int CheckAnimation(int iClient, int iSequence)
 					return 233;
 				case 41, 40, 38, 46, 45, 48, 722, 39, 53, 44, 702, 43, 42, 674, 49, 50, 462:
 					return 51;
-				case 37:
-				{
-					SetEntProp(iClient, Prop_Send, "m_nSequence", 40, 2);
-					return 51;
-				}
 				case 144, 147, 159, 279, 183, 150, 165, 177, 727, 180, 168, 710, 174, 171, 683, 153, 156, 465:
 					return 162;
 				case 295, 309, 305, 313, 283, 289, 741, 314, 308, 315, 715, 317, 316, 691, 310, 311, 468:
@@ -748,11 +743,6 @@ static int CheckAnimation(int iClient, int iSequence)
 					return 69;
 				case 280, 282, 286, 639, 287, 592, 756, 657, 687, 727, 284, 283, 281, 288, 289, 791:
 					return 285;
-				case 581:
-				{
-					SetEntProp(iClient, Prop_Send, "m_nSequence", 646, 2);
-					return 285;
-				}
 				case 114, 619, 716, 676, 646, 135, 138, 774:
 					return 123;
 				case 276, 270, 271, 275, 638, 277, 755, 656, 591, 686, 726, 724, 274, 790:
