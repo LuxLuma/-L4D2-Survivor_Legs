@@ -13,7 +13,7 @@
 
 #define EFL_DONTBLOCKLOS				(1<<25)
 
-#define PLUGIN_VERSION "1.5.1"
+#define PLUGIN_VERSION "1.5.2"
 
 enum
 {
@@ -505,7 +505,7 @@ static bool ShouldHideLegs(int iClient)
 					return true;
 			}
 		}
-		case 'd'://rochelle
+		case 'd', 'w'://rochelle, adawong
 		{
 			switch(GetEntProp(iClient, Prop_Send, "m_nSequence"))
 			{
@@ -561,14 +561,6 @@ static bool ShouldHideLegs(int iClient)
 					return true;
 			}
 		}
-		case 'w'://adawong
-		{
-			switch(GetEntProp(iClient, Prop_Send, "m_nSequence"))
-			{
-				case 674, 678, 679, 630, 631, 632, 633, 634, 668, 677, 681, 680, 676, 675, 673, 672, 671, 670, 687, 629, 651, 638, 637, 636, 635, 616, 615, 614:
-					return true;
-			}
-		}
 	}
 	
 	return false;
@@ -605,7 +597,7 @@ static int CheckAnimation(int iClient, int iSequence)
 					return 301;
 			}
 		}
-		case 'd'://rochelle
+		case 'd', 'w'://rochelle, adawong
 		{
 			switch(iSequence)
 			{
@@ -640,6 +632,8 @@ static int CheckAnimation(int iClient, int iSequence)
 				case 748, 749, 593, 592, 588, 587, 720, 697, 601, 600:
 					return 233;
 				case 41, 40, 38, 46, 45, 48, 722, 39, 53, 44, 702, 43, 42, 674, 49, 50, 462:
+					return 51;
+				case 37:
 					return 51;
 				case 144, 147, 159, 279, 183, 150, 165, 177, 727, 180, 168, 710, 174, 171, 683, 153, 156, 465:
 					return 162;
@@ -743,6 +737,8 @@ static int CheckAnimation(int iClient, int iSequence)
 					return 69;
 				case 280, 282, 286, 639, 287, 592, 756, 657, 687, 727, 284, 283, 281, 288, 289, 791:
 					return 285;
+				case 581:
+					return 285;
 				case 114, 619, 716, 676, 646, 135, 138, 774:
 					return 123;
 				case 276, 270, 271, 275, 638, 277, 755, 656, 591, 686, 726, 724, 274, 790:
@@ -800,28 +796,6 @@ static int CheckAnimation(int iClient, int iSequence)
 				case 650, 258, 254, 257, 252, 253, 843, 652, 817, 597, 618, 793, 255, 256, 380:
 					return 259;
 				
-			}
-		}
-		case 'w'://adawong
-		{
-			switch(iSequence)
-			{
-				case 229, 311, 226, 253, 256, 731, 259, 707, 241, 238, 477, 265, 232, 751, 262, 298, 268, 301, 277, 304, 283, 307, 757:
-					return 232;
-				case 11, 50, 719, 51, 47, 691, 26, 29, 472, 41, 44, 739, 80, 71, 83, 74, 89, 77, 86, 92, 98, 741, 95, 721, 99, 102:
-					return 7;
-				case 608, 609, 715, 591, 587, 589, 738, 596, 600, 601, 766, 767:
-					return 606;
-				case 54, 58, 57, 52, 65, 64, 67, 720, 68, 66, 692, 59, 60, 473, 740:
-					return 56;
-				case 148, 310, 211, 214, 220, 728, 223, 217, 701, 199, 196, 476, 745: 
-					return 145;
-				case 163, 160, 475, 704, 184, 181, 187, 725, 178, 175, 154, 151, 748, 316, 478, 315, 708, 323, 322, 324, 732, 758, 314, 308, 317, 312, 318, 313, 319, 286, 754, 271, 289, 274, 292, 295:
-					return 142;
-				case 111, 106, 138, 135, 742, 139, 722, 136, 137, 698, 117, 120, 474:
-					return 126;
-				case 329, 479, 709, 336, 337, 338, 733, 759, 335, 334, 326, 327:
-					return 333;
 			}
 		}
 	}
