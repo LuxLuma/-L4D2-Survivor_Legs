@@ -597,19 +597,17 @@ static int CheckAnimation(int iClient, int iSequence)
 	static char sModel[31];
 	GetEntPropString(iClient, Prop_Data, "m_ModelName", sModel, sizeof(sModel));
 	
+	int health = GetClientHealth(iClient);
+	float healthBuffer = GetClientHealthBuffer(iClient);
+	
 	bool isCalm = view_as<bool>(GetEntProp(iClient, Prop_Send, "m_isCalm"));
-	bool isLimping = view_as<bool>((GetClientHealth(iClient) + GetEntPropFloat(iClient, Prop_Send, "m_healthBuffer") + 0.0) < g_fLimpHP);
+	bool isLimping = view_as<bool>((health + healthBuffer) < g_fLimpHP);
 	
 	int buttons = GetClientButtons(iClient);
 	
 	// detect via netprops or m_nButtons instead of replacing sequences to fix crouching anims being delayed
 	// AND reduce shitload of work individually checking for every single sequence
-	bool isWalking = view_as<bool>(buttons & IN_SPEED); // IN_SPEED, i know the name doesn't fit but it's literally called that
-	// one problem with this system is if a surv that has been incapped once reaches 1 hp
-	// they'll limp without IN_SPEED being held, this results in the faster limp run seq than
-	// the appropriate limp walk seq
-	// what's mad about this is it's not determined by m_currentReviveCount AND it's on a hidden timer
-	// ...oh well NOBODY WILL NOTICE >:DDDDDDDDD
+	bool isWalking = view_as<bool>(buttons & IN_SPEED) || GetEntProp(iClient, Prop_Send, "m_isGoingToDie") && health == 1 && healthBuffer == 0.0; 
 	
 	float vel[3]; GetEntPropVector(iClient, Prop_Data, "m_vecVelocity", vel);
 	bool isMoving = view_as<bool>(vel[0] != 0.0 || vel[1] != 0.0 || vel[2] != 0.0);
@@ -919,4 +917,21 @@ void SetAttach(int iEntToAttach, int iEntToAttachTo)
 	SetEntProp(iEntToAttach, Prop_Data, "m_usSolidFlags", iFlags, 2);
 	
 	TeleportEntity(iEntToAttach, view_as<float>({0.0, 0.0, 0.0}), view_as<float>({0.0, 0.0, 0.0}), NULL_VECTOR);
+}
+
+// Taken and modified from l4d_stocks.inc
+stock float GetClientHealthBuffer(int client)
+{
+    static ConVar painPillsDecayCvar = null;
+    if (painPillsDecayCvar == null)
+    {
+        painPillsDecayCvar = FindConVar("pain_pills_decay_rate");
+        if (painPillsDecayCvar == null)
+        {
+            return 0.0;
+        }
+    }
+
+    float tempHealth = GetEntPropFloat(client, Prop_Send, "m_healthBuffer") - ((GetGameTime() - GetEntPropFloat(client, Prop_Send, "m_healthBufferTime")) * painPillsDecayCvar.FloatValue);
+    return tempHealth < 0.0 ? 0.0 : tempHealth;
 }
