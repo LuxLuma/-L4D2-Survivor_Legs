@@ -13,7 +13,7 @@
 
 #define EFL_DONTBLOCKLOS				(1<<25)
 
-#define PLUGIN_VERSION "1.5.3"
+#define PLUGIN_VERSION "1.6.0"
 
 enum
 {
@@ -43,6 +43,11 @@ static int iAttachedOwner[2048+1];
 static bool bThirdPerson[MAXPLAYERS+1];
 
 static bool bLMC_Available = false;
+static bool bLMC_Integration = false;
+
+ConVar cvar_LMC_Integration;
+ConVar cvar_LimpHP;
+ConVar cvar_mp_facefronttime;
 
 float g_fLimpHP;
 
@@ -92,11 +97,16 @@ public void OnPluginStart()
 	HookEvent("player_team", eTeamChange);
 	HookEvent("round_start", eRoundStart);
 	
-	HookConVarChange(FindConVar("mp_facefronttime"), eConvarChanged);
+	cvar_mp_facefronttime = FindConVar("mp_facefronttime");
+	cvar_mp_facefronttime.AddChangeHook(eConvarChanged);
 	
-	ConVar cvar_LimpHP = FindConVar("survivor_limp_health");
-	cvar_LimpHP.AddChangeHook(CC_LimpHP);
-	CC_LimpHP(cvar_LimpHP, "", "");
+	cvar_LimpHP = FindConVar("survivor_limp_health");
+	cvar_LimpHP.AddChangeHook(eConvarChanged);
+	
+	cvar_LMC_Integration = CreateConVar("lmc_integration", "1", "Copy LMC model to legs model, creates an extra entity for legs, will update on state change for legs", _, true, 0.0, true, 1.0);
+	cvar_LMC_Integration.AddChangeHook(eConvarChanged);
+	AutoExecConfig(true, "_[L4D2]Survivor_Legs");
+	CvarsChanged();
 }
 
 public void OnPluginEnd()
@@ -106,15 +116,20 @@ public void OnPluginEnd()
 		if (!IsValidEntRef(iEntRef[iClient])) continue;
 		
 		int iEntity = EntRefToEntIndex(iEntRef[iClient]);
-		AcceptEntityInput(iEntity, "Kill");
+		RemoveEntity(iEntity);
 	}
 }
 
-void CC_LimpHP(ConVar convar, const char[] oldValue, const char[] newValue)	{ g_fLimpHP =	convar.FloatValue;	}
-
 public void eConvarChanged(Handle hCvar, const char[] sOldVal, const char[] sNewVal)
 {
-	SetConVarInt(hCvar, -1, true);
+	CvarsChanged();
+}
+
+void CvarsChanged()
+{
+	cvar_mp_facefronttime.SetFloat(-1.0, true);
+	bLMC_Integration = cvar_LMC_Integration.BoolValue;
+	g_fLimpHP =	cvar_LimpHP.FloatValue;
 }
 
 void AttachLegs(int iClient)
@@ -190,7 +205,17 @@ void AttachOverlayLegs(int iClient, bool bBaseReattach)
 	
 	if(!IsValidEntRef(iSurvivorLegs))
 		return;
-		
+	
+	if(!bLMC_Integration)
+	{
+		if(IsValidEntRef(iAttachedRef[iSurvivorLegs]))
+		{
+			RemoveEntity(iAttachedRef[iSurvivorLegs]);
+		}
+		ToggleLegsRender(iSurvivorLegs, true);
+		return;
+	}
+	
 	int iOverlayModel = LMC_GetClientOverlayModel(iClient);
 	
 	if(iOverlayModel == -1)
@@ -209,7 +234,7 @@ void AttachOverlayLegs(int iClient, bool bBaseReattach)
 			return;
 		}
 		else
-			AcceptEntityInput(iEnt, "Kill");
+			RemoveEntity(iEnt);
 	}
 	
 	iEnt = CreateEntityByName("prop_dynamic_override");
@@ -325,7 +350,7 @@ public void eTeamChange(Handle hEvent, const char[] sEventName, bool bDontBroadc
 	if(!IsValidEntRef(iEntRef[iClient]))
 		return;
 	
-	AcceptEntityInput(EntRefToEntIndex(iEntRef[iClient]), "kill");
+	RemoveEntity(iEntRef[iClient]);
 	iEntRef[iClient] = -1;
 }
 
@@ -342,7 +367,7 @@ public void ePlayerDeath(Handle hEvent, const char[] sEventName, bool bDontBroad
 	if(!IsValidEntRef(iEntRef[iVictim]))
 		return;
 	
-	AcceptEntityInput(EntRefToEntIndex(iEntRef[iVictim]), "kill");
+	RemoveEntity(iEntRef[iVictim]);
 	iEntRef[iVictim] = -1;
 }
 
@@ -410,7 +435,7 @@ public void OnClientDisconnect(int iClient)
 	if(!IsValidEntRef(iEntRef[iClient]))
 		return;
 	
-	AcceptEntityInput(EntRefToEntIndex(iEntRef[iClient]), "kill");
+	RemoveEntity(iEntRef[iClient]);
 	iEntRef[iClient] = -1;
 }
 
@@ -452,7 +477,7 @@ public void LMC_OnClientModelDestroyed(int iClient, int iEntity)
 		return;
 	
 	ToggleLegsRender(iSurvivorLegs, true);
-	AcceptEntityInput(iOverlayLegs, "Kill");
+	RemoveEntity(iOverlayLegs);
 }
 
 void ToggleLegsRender(int iLegs, bool bShow=false)
